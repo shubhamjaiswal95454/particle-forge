@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Editor - ParticleForge</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <div class="ui-layer">
+        <nav class="navbar" style="background:transparent; border:none;">
+            <div class="logo">ParticleForge <span style="font-size:12px; color:#aaa;">EDITOR</span></div>
+            <a href="index.html" style="pointer-events:auto; border:1px solid white; padding:5px 15px; border-radius:4px;">Exit</a>
+        </nav>
+        
+        <button id="export-btn" onclick="openExportModal()">⚡ GET CODE</button>
+    </div>
+
+    <div id="canvas-container"></div>
+
+    <div id="modal" class="modal">
+        <div class="modal-content">
+            <h2 id="modal-title">Generating Code...</h2>
+            
+            <div id="ad-space" style="background:#333; height:100px; margin:20px 0; display:flex; align-items:center; justify-content:center; color:#777;">
+                [ Advertisement Space ]
+            </div>
+
+            <textarea id="code-output" style="display:none;"></textarea>
+            <button class="btn-primary" onclick="closeModal()" style="margin-top:20px; cursor:pointer;">Close</button>
+        </div>
+    </div>
+
+    <script type="module">
+        import * as THREE from 'https://unpkg.com/three@0.160.0/build/three.module.js';
+        import GUI from 'https://unpkg.com/lil-gui@0.19.1/dist/lil-gui.esm.min.js';
+
+        // 1. CONFIG
+        const params = {
+            count: 2000,
+            size: 0.5,
+            color: '#00e5ff',
+            speed: 0.2
+        };
+
+        // 2. SETUP
+        const scene = new THREE.Scene();
+        scene.fog = new THREE.FogExp2(0x050505, 0.002);
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth/window.innerHeight, 1, 2000);
+        camera.position.z = 800;
+        const renderer = new THREE.WebGLRenderer({antialias:true});
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        document.getElementById('canvas-container').appendChild(renderer.domElement);
+
+        // 3. TEXTURE
+        function getTexture(){
+            const c = document.createElement('canvas'); c.width=32; c.height=32;
+            const ctx = c.getContext('2d');
+            const g = ctx.createRadialGradient(16,16,0,16,16,16);
+            g.addColorStop(0,'rgba(255,255,255,1)');
+            g.addColorStop(1,'rgba(0,0,0,0)');
+            ctx.fillStyle=g; ctx.fillRect(0,0,32,32);
+            return new THREE.Texture(c);
+        }
+        const tex = getTexture(); tex.needsUpdate=true;
+
+        // 4. PARTICLES
+        let particles, geo, mat;
+        function initParticles(){
+            if(particles) { scene.remove(particles); geo.dispose(); mat.dispose(); }
+            geo = new THREE.BufferGeometry();
+            const pos = [];
+            for(let i=0; i<params.count; i++){
+                pos.push((Math.random()-0.5)*2000, (Math.random()-0.5)*2000, (Math.random()-0.5)*2000);
+            }
+            geo.setAttribute('position', new THREE.Float32BufferAttribute(pos,3));
+            mat = new THREE.PointsMaterial({
+                size: params.size*10, color: params.color, map: tex,
+                transparent:true, blending:THREE.AdditiveBlending, depthWrite:false
+            });
+            particles = new THREE.Points(geo, mat);
+            scene.add(particles);
+        }
+        initParticles();
+
+        // 5. GUI
+        const gui = new GUI({title:'Settings'});
+        gui.add(params,'count', 500, 5000, 100).onFinishChange(initParticles);
+        gui.addColor(params,'color').onChange(v => mat.color.set(v));
+        gui.add(params,'size', 0.1, 2).onChange(v => mat.size = v*10);
+        gui.add(params,'speed', 0, 2);
+
+        // 6. ANIMATE
+        function animate(){
+            requestAnimationFrame(animate);
+            particles.rotation.y += params.speed * 0.005;
+            renderer.render(scene, camera);
+        }
+        animate();
+
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth/window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+        // 7. EXPORT LOGIC (The Money Maker)
+        window.openExportModal = function() {
+            const modal = document.getElementById('modal');
+            const title = document.getElementById('modal-title');
+            const output = document.getElementById('code-output');
+            
+            modal.style.display = 'flex';
+            output.style.display = 'none';
+            title.innerText = "Generating Code...";
+            
+            // DELAY TO SHOW AD (Simulated 2 seconds)
+            setTimeout(() => {
+                title.innerText = "Here is your code:";
+                output.style.display = 'block';
+                output.value = `<script type="module">
+  // ParticleForge Generated Effect
+  // Config: Count: ${params.count}, Color: ${params.color}
+  // Full library requires Three.js
+<\/script>`;
+            }, 2000); // 2000ms = 2 seconds delay
+        }
+
+        window.closeModal = function() {
+            document.getElementById('modal').style.display = 'none';
+        }
+    </script>
+</body>
+</html>
